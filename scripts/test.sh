@@ -29,28 +29,39 @@ fi
 total=0
 pass=0
 
-check() {
-    local name="$1"
+record() {
     total=$((total + 1))
-    if "$2" > /dev/null 2>&1; then
+    if [[ "$2" -eq 0 ]]; then
         pass=$((pass + 1))
-        echo "PASS: $name"
+        echo "PASS: $1"
     else
-        echo "FAIL: $name"
+        echo "FAIL: $1"
     fi
 }
 
 # Test 1: GET / returns 200 and a greeting
-check "GET / returns 200 with greeting" \
-    "bash -c 'code=\$(curl -s -o /tmp/inf345_body -w \"%{http_code}\" \"$BASE/\") && [[ \"\$code\" == \"200\" ]] && grep -q \"Hello\" /tmp/inf345_body'"
+code=$(curl -s -o /tmp/inf345_body -w "%{http_code}" "$BASE/" || true)
+if [[ "$code" == "200" ]] && grep -q "Hello" /tmp/inf345_body; then
+    record "GET / returns 200 with greeting" 0
+else
+    record "GET / returns 200 with greeting" 1
+fi
 
 # Test 2: GET /healthz returns 200 and is not empty
-check "GET /healthz returns 200, non-empty" \
-    "bash -c 'body=\$(curl -sf \"$BASE/healthz\") && [[ -n \"\$body\" ]]'"
+body=$(curl -sf --max-time 5 "$BASE/healthz" || true)
+if [[ -n "$body" ]]; then
+    record "GET /healthz returns 200, non-empty" 0
+else
+    record "GET /healthz returns 200, non-empty" 1
+fi
 
-# Test 3: GET /notes returns 200 with a JSON list
-check "GET /notes returns 200 with notes list" \
-    "bash -c 'code=\$(curl -s -o /tmp/inf345_notes -w \"%{http_code}\" \"$BASE/notes\") && [[ \"\$code\" == \"200\" ]] && grep -q \"buy milk\" /tmp/inf345_notes'"
+# Test 3: GET /notes returns 200 and a JSON list
+code=$(curl -s -o /tmp/inf345_notes -w "%{http_code}" "$BASE/notes" || true)
+if [[ "$code" == "200" ]] && grep -q "buy milk" /tmp/inf345_notes; then
+    record "GET /notes returns 200 with notes list" 0
+else
+    record "GET /notes returns 200 with notes list" 1
+fi
 
 echo "TESTS: $pass/$total"
 [[ "$pass" -eq "$total" ]]
