@@ -41,7 +41,7 @@ record() {
 
 # Test 1: GET / returns 200 and a greeting
 code=$(curl -s -o /tmp/inf345_body -w "%{http_code}" "$BASE/" || true)
-if [[ "$code" == "200" ]] && grep -q "Goodbye" /tmp/inf345_body; then
+if [[ "$code" == "200" ]] && grep -q "Hello" /tmp/inf345_body; then
     record "GET / returns 200 with greeting" 0
 else
     record "GET / returns 200 with greeting" 1
