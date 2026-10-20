@@ -31,3 +31,65 @@ jobs:
           java-version: "21"
 
       - run: ./scripts/test.sh
+
+  publish:
+    name: Build, scan and publish the image
+    needs: test                    # 1. the id of your test job: publish only after the tests pass
+    if: github.event_name == 'push'   # 2. the only event allowed to publish (never a pull request)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read               # check out the code
+      packages: write               # 3. what must the token be allowed to do to packages?
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Name the image in lowercase - registries require it
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build the image - it stays on the runner for now
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          load: true
+          tags: ${{ env.IMAGE }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test - run it on port 9123 and call /healthz
+        run: |
+          docker run -d --name app -e PORT=9000 -p 9123:9123 "$IMAGE:$GITHUB_SHA"   # 4. the port your app must listen on INSIDE
+          curl --fail --silent --show-error --retry 15 --retry-delay 1 --retry-all-errors http://localhost:9123/healthz
+
+      - name: Show the container's output if anything failed
+        if: failure()
+        run: docker logs app || true
+
+      - name: Scan - fail on critical vulnerabilities that have a fix
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE }}:${{ github.sha }}
+          cache-dir: ${{ runner.temp }}/trivy   # keeps Trivy's database out of your build context
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"          # 5. the exit code that makes this step fail
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}      # 6. the token GitHub creates for this job - not a password of yours
+
+      - name: Push - tagged with the commit SHA, and latest
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          push: true
+          # 7. in the first tag below: the commit being built - the tag M3 looks for
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
