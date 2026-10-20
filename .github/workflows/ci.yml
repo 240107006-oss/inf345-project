@@ -61,7 +61,7 @@ jobs:
 
       - name: Smoke test - run it on port 9123 and call /healthz
         run: |
-          docker run -d --name app -e PORT=9000 -p 9123:9123 "$IMAGE:$GITHUB_SHA"   # 4. the port your app must listen on INSIDE
+          docker run -d --name app -e PORT=9000 -p 9123:9000 "$IMAGE:$GITHUB_SHA"   # 4. the port your app must listen on INSIDE
           curl --fail --silent --show-error --retry 15 --retry-delay 1 --retry-all-errors http://localhost:9123/healthz
 
       - name: Show the container's output if anything failed
