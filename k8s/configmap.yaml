@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: notes-config
+data:
+  PORT: "8080"
+  GREETING: "Hello from Kubernetes!"
