@@ -1,72 +1,75 @@
-# M4 starter. Copy these files into k8s/ in your project, then fill every blank (four underscores).
-# The comment next to a blank is the question. Every blank is a decision from Monday.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ____                         # 1. your service's name, e.g. notes
+  name: notes
 spec:
-  replicas: ____                     # 2. how many copies? at least 2 - one may fail while one serves
+  replicas: 2
   selector:
     matchLabels:
-      app: ____                      # 3. the label this Deployment owns
+      app: notes
   template:
     metadata:
       labels:
-        app: ____                    # 4. the label every Pod gets - the same as 3
+        app: notes
     spec:
       securityContext:
-        runAsNonRoot: ____           # 5. refuse to start as root (week 5: USER 1000:1000)
+        runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
       containers:
         - name: app
-          # 6. your M3 image: ghcr.io/<owner>/<project> in lowercase, a colon, the FULL 40-character SHA
-          image: ghcr.io/____/____:____
+          image: ghcr.io/240107006-oss/inf345-project:1ef0a2c9bd8b1d1e95a773f45c9cc38bea4e6660
           ports:
             - name: http
-              containerPort: ____    # 7. the number your ConfigMap gives PORT
+              containerPort: 8080
           env:
             - name: PORT
               valueFrom:
                 configMapKeyRef:
-                  name: ____         # 8. the name of your ConfigMap (configmap.yaml)
+                  name: notes-config
                   key: PORT
-            - name: ____             # 9. one more setting your app reads, from the same ConfigMap
+            - name: GREETING
               valueFrom:
                 configMapKeyRef:
-                  name: ____         #    (the same ConfigMap as 8)
-                  key: ____          #    (a key you put in configmap.yaml)
-            - name: ____             # 10. a secret your app reads, e.g. API_KEY
+                  name: notes-config
+                  key: GREETING
+            - name: API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: app-secret   # fixed name: you and the marker create it; it is never in Git
-                  key: ____          #    the key inside app-secret - you choose it
-          readinessProbe:            # "should this Pod get traffic now?"
+                  name: app-secret
+                  key: API_KEY
+          startupProbe:
             httpGet:
-              path: ____             # 11. your contract's health endpoint
-              port: ____             # 12. which port? the name of the port above works
+              path: /healthz
+              port: http
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
             periodSeconds: 5
             failureThreshold: 3
-          livenessProbe:             # "should this container be restarted?"
+          livenessProbe:
             httpGet:
-              path: ____             # 13. the same endpoint as 11
-              port: ____             # 14. the same port as 12
-            periodSeconds: ____      # 15. how often? readiness should notice before liveness acts
+              path: /healthz
+              port: http
+            periodSeconds: 10
             failureThreshold: 3
           resources:
-            requests:                # what the scheduler reserves for one Pod
-              cpu: ____              # 16. e.g. 50m = 5% of one CPU
-              memory: ____           # 17. e.g. 64Mi (Java: see the language table)
-            limits:                  # the ceiling: over the memory limit, the container is killed
-              cpu: ____              # 18. at least the request
-              memory: ____           # 19. at least the request
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
           volumeMounts:
-            - name: tmp              # a writable /tmp, because the root filesystem is read-only
+            - name: tmp
               mountPath: /tmp
       volumes:
         - name: tmp
