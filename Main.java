@@ -7,13 +7,14 @@ import java.net.InetSocketAddress;
 public class Main {
     public static void main(String[] args) throws IOException {
         int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
+        String greeting = System.getenv().getOrDefault("GREETING", "Hello from INF 345!");
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
 
         server.createContext("/healthz", ex -> respond(ex, 200, "ok\n"));
         server.createContext("/notes", ex -> respond(ex, 200,
             "[{\"id\":1,\"text\":\"buy milk\"},"
           + "{\"id\":2,\"text\":\"finish INF 345 week 3\"}]\n"));
-        server.createContext("/", ex -> respond(ex, 200, "Hello from INF 345!\n"));
+        server.createContext("/", ex -> respond(ex, 200, greeting + "\n"));
 
         server.start();
         System.out.println("Listening on port " + port);
