@@ -1,4 +1,9 @@
 /src/*.class
 .git/
 .github/
-.env
+.env*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
+*.tfplan
+crash.log
