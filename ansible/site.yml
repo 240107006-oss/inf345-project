@@ -1,0 +1,29 @@
+- name: Prepare a machine for my service
+  hosts: app_servers
+  gather_facts: true
+  vars:
+    app_dir: "{{ ansible_facts.env.HOME }}/inf345-app"
+    app_port: 8080
+
+  tasks:
+    - name: The app directory exists
+      ansible.builtin.file:
+        path: "{{ app_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: The config file sets the port
+      ansible.builtin.copy:
+        dest: "{{ app_dir }}/app.env"
+        content: |
+          PORT={{ app_port }}
+        mode: "0644"
+      notify: Restart the app
+
+  handlers:
+    # At work: ansible.builtin.systemd with state: restarted. Here it only
+    # writes one line per restart, so you can count the restarts.
+    - name: Restart the app
+      ansible.builtin.shell:
+        cmd: date >> "{{ app_dir }}/restarts.log"
+      changed_when: true
